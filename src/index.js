@@ -1,25 +1,21 @@
-import React from "react";
-import { render } from "react-dom";
-import { Hello } from "./Hello";
-import { ApolloClient } from 'apollo-client'
-import { ApolloProvider } from "react-apollo";
-
+import React from 'react';
+import ReactDOM from 'react-dom';
+import {ApolloClient} from 'apollo-client';
+import {createHttpLink} from 'apollo-link-http';
+import {ApolloProvider} from 'react-apollo';
+import {ApolloNetworkStatusProvider, useApolloNetworkStatus} from 'react-apollo-network-status';
 import { InMemoryCache } from 'apollo-cache-inmemory'
-
 import gql from 'graphql-tag'
 
-import { ApolloNetworkStatusProvider } from 'react-apollo-network-status'
-import { createHttpLink } from 'apollo-link-http';
-
-
-const cache = new InMemoryCache({
-  dataIdFromObject: object => object.id
-})
-
-const styles = {
-  fontFamily: "sans-serif",
-  textAlign: "center"
-};
+function GlobalLoadingIndicator() {
+  const status = useApolloNetworkStatus();
+  console.log('status>>%j', status);
+  if (status.numPendingQueries > 0) {
+    return <p>Loading …</p>;
+  } else {
+    return null;
+  }
+}
 
 const query = gql`
   query Continents {
@@ -30,29 +26,25 @@ const query = gql`
   }
 `;
 
-console.log(query);
+const apolloClient = new ApolloClient({
+  cache: new InMemoryCache(),
+  link: createHttpLink({ uri: "https://countries.trevorblades.com/" })
+});
 
-export const apolloClient = new ApolloClient({
-    link: createHttpLink({ uri: "https://countries.trevorblades.com/" }),
-    cache
-  })
-
-const Provider = () => {
-  return (
-    <ApolloProvider client={apolloClient}>
-      <ApolloNetworkStatusProvider client={apolloClient}>
-      <App />
-      </ApolloNetworkStatusProvider>
-    </ApolloProvider>
-  );
+const clickHandler = async () => {
+  const res = await apolloClient.query({
+    query: query
+  });
+  console.log("res>>%j", res);
 };
 
-const App = () => {
-  return (
-    <div style={styles}>
-      <Hello name="CodeSandbox" apolloClient={apolloClient} query={query} />
-    </div>
-  );
-};
-
-render(<Provider />, document.getElementById("root"));
+const element = (
+  <ApolloProvider client={apolloClient}>
+    <ApolloNetworkStatusProvider>
+      <GlobalLoadingIndicator />
+      <h3>Hello World!!</h3>
+      <button onClick={clickHandler}>Click Me</button>
+    </ApolloNetworkStatusProvider>
+  </ApolloProvider>
+);
+ReactDOM.render(element, document.getElementById('root'));
